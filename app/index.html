@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barometer Nusantara — Statistik Nasional Indonesia 1996–2025</title>
+<meta name="description" content="Portal statistik Indonesia: 28 indikator nasional, 1996–2025, bersumber dari World Bank Open Data. Grafik interaktif, tabel lengkap, unduhan CSV. Seluruh halaman bekerja tanpa jaringan.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23b5121b'/%3E%3Cpath d='M6 24V8h4v12h6v4zM18 8h8v4h-8z' fill='white'/%3E%3C/svg%3E">
+</head>
+<body>
+<a class="skip" href="#app">Lewati ke konten</a>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="#/" aria-label="Barometer Nusantara — beranda">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-text">
+        <strong>Barometer Nusantara</strong>
+        <small>Statistik Nasional Indonesia &middot; 1996–2025</small>
+      </span>
+    </a>
+    <nav class="mainnav" aria-label="Navigasi utama">
+      <a href="#/" data-nav="home">Beranda</a>
+      <a href="#/table" data-nav="table">Database</a>
+      <a href="#/about" data-nav="about">Tentang &amp; Metode</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="sideIndex">Indikator ▾</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sideIndex" aria-label="Indeks indikator">
+    <div class="sidebar-search">
+      <input type="search" id="sideFilter" placeholder="Cari indikator…" aria-label="Cari indikator di bilah sisi">
+    </div>
+    <nav id="sideList" class="side-list"></nav>
+    <p class="side-foot">28 indikator &middot; sumber: World Bank Open Data, diunduh 2026-11-26.</p>
+  </aside>
+
+  <main id="app" class="content" tabindex="-1"></main>
+</div>
+
+<footer class="pagefoot">
+  <p><strong>Barometer Nusantara</strong> — data indikator Indonesia 1996–2025 bersumber dari <em>World Bank Open Data API</em> (unduhan 2026-11-26). Portal statis: seluruh halaman, grafik dan unduhan CSV bekerja tanpa koneksi jaringan.</p>
+  <p class="foot-links"><a href="#/about">Metodologi &amp; glosarium</a> · <a href="#/table">Tabel database</a> · <a href="#/">Ringkasan nasional</a></p>
+</footer>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
