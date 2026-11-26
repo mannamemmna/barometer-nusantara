@@ -1,7 +1,7 @@
 // views.js — tiga tampilan utama: ringkasan nasional (#/), detail indikator (#/indicator/<key>),
 // dan halaman metodologi (#/about). Berbagi helper statistik dengan table.js.
 import { DATA, METAS, ORDER, SECTORS } from "./data.js";
-import { lineChart, barChart, sparkSvg, fmt, esc, COLORS } from "./charts.js";
+import { lineChart, barChart, sparkSvg, smallMultiples, fmt, esc, COLORS } from "./charts.js";
 
 // ---------- helper statistik deret ----------
 export function seriesStats(key) {
@@ -87,12 +87,13 @@ export function home(app) {
      tidak ada permintaan jaringan saat halaman dibuka.</p>
   ${kpiHtml}
 
-  <div class="section-title" id="makro"><h2>Perekonomian makro — grafik interaktif</h2>
+  <div class="section-title" id="makro"><h2>Perekonomian makro — panel per indikator</h2>
     <span class="hint">centang / lepas indikator untuk membandingkan · arahkan kursor untuk nilai per tahun</span></div>
   <section class="card">
     <div class="chips" id="macroChips" role="group" aria-label="Pilih indikator untuk grafik">${chipHtml}</div>
-    <div id="macroChart"></div>
-    <p class="chart-note" id="macroNote"></p>
+    <div id="macroGrid"></div>
+    <p class="chart-note">Tiap panel memakai sumbu-Y sendiri, sehingga lonjakan krisis 1998 pada satu indikator tidak lagi
+      menghimpit seri lainnya; angka di kanan atas tiap panel adalah nilai terkini beserta perubahan terhadap tahun sebelumnya.</p>
   </section>
 
   <div class="two-col" style="margin-top:16px">
@@ -114,36 +115,43 @@ export function home(app) {
   <section class="sector-grid">${sectorCards}</section>
   `;
 
-  // ----- grafik makro interaktif dengan chip -----
-  const host = document.getElementById("macroChart");
-  const note = document.getElementById("macroNote");
-  const dim = (u) => (u.startsWith("%") || u.startsWith("skala") ? "persen" : u); // % angkatan kerja, % PDB, skala 0–100 → satu dimensi baca
+  // ----- panel makro: small multiples, satu mini-chart per seri terpilih -----
+  const grid = document.getElementById("macroGrid");
+  const goodUp = { gdpGrowth: true, inflation: false, unemployment: false, exchangeRate: false, exports: true, gini: false };
   function selected() {
-    return [...host.closest("section").querySelectorAll("#macroChips input:checked")].map((i) => i.dataset.k);
+    return [...grid.closest("section").querySelectorAll("#macroChips input:checked")].map((i) => i.dataset.k);
   }
   function drawMacro() {
-    const keys = selected();
     document.querySelectorAll("#macroChips .chip").forEach((c) => {
       c.classList.toggle("on", c.querySelector("input").checked);
     });
+    const keys = selected();
     if (keys.length === 0) {
-      host.innerHTML = `<p style="color:var(--ink-faint);padding:20px 0">Pilih minimal satu indikator di atas.</p>`;
-      note.textContent = "";
+      grid.classList.remove("mini-grid");
+      grid.innerHTML = `<p style="color:var(--ink-faint);padding:20px 0">Pilih minimal satu indikator di atas.</p>`;
       return;
     }
-    const dims = new Set(keys.map((k) => dim(METAS[k].unit)));
-    const indexed = dims.size > 1;
-    const series = keys.map((k) => ({
-      key: k, label: METAS[k].label, format: METAS[k].format,
-      color: COLORS[chips.indexOf(k) % COLORS.length], data: DATA[k],
-    }));
-    lineChart(host, {
-      series, indexed, height: 300,
-      aria: indexed ? "Grafik indeks, 1996 = 100" : "Grafik indikator terpilih",
+    const series = keys.map((k) => {
+      const m = METAS[k], last = DATA[k].at(-1), d = yoy(k);
+      let deltaLabel = "", deltaCls = "flat";
+      if (d) {
+        const usePp = m.format === "pct";
+        const dv = usePp ? d.abs : d.rel;
+        const txt = usePp
+          ? `${dv > 0 ? "+" : dv < 0 ? "−" : ""}${fmt(Math.abs(dv), "num")} poin vs ${d.prevYear}`
+          : `${dv > 0 ? "+" : dv < 0 ? "−" : ""}${fmt(Math.abs(dv), "num")}% vs ${d.prevYear}`;
+        deltaCls = dv === 0 ? "flat" : (dv > 0) === !!goodUp[k] ? "up" : "down";
+        deltaLabel = deltaArrow(dv, txt);
+      }
+      return {
+        key: k, href: `#/indicator/${k}`, label: m.label, format: m.format, data: DATA[k],
+        color: COLORS[chips.indexOf(k) % COLORS.length],
+        valueLabel: fmt(last[1], m.format), deltaLabel, deltaCls,
+        aria: `Mini grafik ${m.label} per tahun, satuan ${m.unit}`,
+      };
     });
-    note.textContent = indexed
-      ? "Satuan indikator berbeda-beda, maka nilai dinormalkan ke indeks 1996 = 100; tooltip tetap menampilkan nilai asli."
-      : "Satuan: persen (%). Lonjakan 1998 pada garis inflasi dan palung pada pertumbuhan PDB merekam krisis moneter.";
+    grid.innerHTML = "";
+    smallMultiples(grid, series);
   }
   document.getElementById("macroChips").addEventListener("change", drawMacro);
   drawMacro();

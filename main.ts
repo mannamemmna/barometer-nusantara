@@ -3,6 +3,8 @@
 // on 2026-11-26. Pure static frontend: hash-routed SPA in vanilla ES modules (app/), hand-rolled accessible SVG charts,
 // 28-indicator matrix table with year-range sliders, multi-column sort, row search, and offline CSV download via Blob.
 // Zero network requests at runtime; responsive from desktop (1280x800) down to phone (390x844).
+// Visual polish: inline-SVG brand wordmark + matching data-URI favicon in the masthead; the macro comparison on #/ is
+// rendered as small multiples (one auto-scaled mini-chart per selected indicator) instead of one shared indexed axis.
 //
 // This build program packages app/ and screenshots/ to MAKEFUN_OUTPUT_DIR (defaults to /output) and writes dossier.json
 // via the byte-identical vendor/makefun-frontend.ts helper. Run locally:

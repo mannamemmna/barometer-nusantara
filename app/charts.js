@@ -185,6 +185,112 @@ export function lineChart(host, opts) {
   return { redraw: draw };
 }
 
+// ---------- small multiples: satu mini-chart per seri, sumbu-Y sendiri ----------
+// Menghindari masalah grafik gabungan ternormalisasi: lonjakan besar satu seri tidak
+// menghimpit seri lain karena tiap panel memakai skalanya sendiri.
+// s: {label, color, format, data:[[year,v],…], href, valueLabel, deltaLabel, deltaCls, aria}
+export function smallMultiples(host, series) {
+  host.classList.add("mini-grid");
+  host.innerHTML = series.map((s) => `
+    <figure class="mini">
+      <figcaption class="mini-head">
+        <span class="mini-name"><span class="dot" style="background:${s.color}"></span>${
+          s.href ? `<a href="${s.href}">${esc(s.label)}</a>` : esc(s.label)}</span>
+        <span class="mini-latest">${esc(s.valueLabel ?? "")}<span class="mini-delta ${s.deltaCls || "flat"}">${esc(s.deltaLabel || "")}</span></span>
+      </figcaption>
+      <div class="mini-chart"></div>
+    </figure>`).join("");
+  host.querySelectorAll(".mini-chart").forEach((el, i) => miniChart(el, series[i]));
+}
+
+function miniChart(host, s) {
+  host.classList.add("chart-wrap");
+  host.innerHTML = '<div class="chart-tip" role="status" aria-live="polite"></div>';
+  const tip = host.querySelector(".chart-tip");
+  const H = 170;
+  let focusIdx = null, geom = null;
+
+  function draw() {
+    const w = Math.max(220, host.clientWidth || 320);
+    const pad = { t: 10, r: 12, b: 22, l: 46 };
+    const years = s.data.map(([y]) => y);
+    const yMin = Math.min(...years), yMax = Math.max(...years);
+    const vals = s.data.map(([, v]) => v).filter((v) => v != null);
+    const { lo: tLo, hi: tHi, ticks } = niceTicks(Math.min(...vals), Math.max(...vals), 4);
+    const X = (y) => pad.l + ((y - yMin) / (yMax - yMin || 1)) * (w - pad.l - pad.r);
+    const Y = (v) => pad.t + (1 - (v - tLo) / (tHi - tLo || 1)) * (H - pad.t - pad.b);
+    geom = { X, Y, yMin, yMax, w, pad, H };
+
+    let g = "";
+    ticks.forEach((t) => {
+      g += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="${t === 0 ? "#9a958d" : "#e6e2dc"}" stroke-width="${t === 0 ? 1.3 : 1}"/>`;
+      g += `<text x="${pad.l - 6}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end" font-size="10.5" fill="#5d626a">${esc(fmtTick(t))}</text>`;
+    });
+    const mid = Math.round((yMin + yMax) / 2);
+    [[yMin, "start"], [mid, "middle"], [yMax, "end"]].forEach(([y, anc]) => {
+      g += `<text x="${X(y).toFixed(1)}" y="${H - 6}" text-anchor="${anc}" font-size="10.5" fill="#5d626a">${y}</text>`;
+    });
+    const ok = s.data.filter(([, v]) => v != null);
+    g += `<polyline points="${ok.map(([y, v]) => `${X(y).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const last = ok.at(-1);
+    if (last) g += `<circle cx="${X(last[0]).toFixed(1)}" cy="${Y(last[1]).toFixed(1)}" r="3" fill="${s.color}"/>`;
+    g += `<g id="cross" style="display:none"><line y1="${pad.t}" y2="${H - pad.b}" stroke="#1b1d20" stroke-width="1" stroke-dasharray="3 3"/><circle r="4" fill="${s.color}" stroke="#fff" stroke-width="1.5"/></g>`;
+    g += `<rect class="hitzone" x="${pad.l}" y="${pad.t}" width="${Math.max(1, w - pad.l - pad.r)}" height="${H - pad.t - pad.b}" fill="transparent"/>`;
+
+    const prev = host.querySelector("svg");
+    host.insertAdjacentHTML("afterbegin",
+      `<svg viewBox="0 0 ${w} ${H}" role="img" tabindex="0" aria-label="${esc(s.aria || s.label)}" style="font-family:inherit">${g}</svg>`);
+    if (prev) prev.remove();
+    renderFocus();
+  }
+
+  function renderFocus() {
+    const svg = host.querySelector("svg");
+    if (!svg || !geom) return;
+    const cross = svg.querySelector("#cross");
+    if (focusIdx == null) { cross.style.display = "none"; tip.style.display = "none"; return; }
+    const year = geom.yMin + focusIdx;
+    if (year > geom.yMax) { cross.style.display = "none"; tip.style.display = "none"; return; }
+    const x = geom.X(year);
+    cross.style.display = "";
+    cross.querySelector("line").setAttribute("x1", x); cross.querySelector("line").setAttribute("x2", x);
+    const dot = cross.querySelector("circle");
+    const hit = s.data.find(([yy]) => yy === year);
+    if (!hit || hit[1] == null) dot.setAttribute("opacity", "0");
+    else { dot.setAttribute("opacity", "1"); dot.setAttribute("cx", x); dot.setAttribute("cy", geom.Y(hit[1])); }
+    tip.innerHTML = `<div class="tip-year">Tahun ${year}</div><span class="sw" style="background:${s.color}"></span>${esc(s.label)}: <strong>${esc(fmt(hit ? hit[1] : null, s.format))}</strong>`;
+    tip.style.display = "block";
+    const tw = tip.offsetWidth;
+    let left = x + 12;
+    if (left + tw > geom.w - 4) left = x - tw - 12;
+    tip.style.left = Math.max(2, left) + "px";
+    tip.style.top = (geom.pad.t + 4) + "px";
+  }
+
+  host.addEventListener("pointermove", (e) => {
+    if (!geom) return;
+    const rect = host.querySelector("svg").getBoundingClientRect();
+    const px = (e.clientX - rect.left) * (geom.w / rect.width);
+    const frac = (px - geom.pad.l) / (geom.w - geom.pad.l - geom.pad.r);
+    focusIdx = Math.max(0, Math.min(geom.yMax - geom.yMin, Math.round(frac * (geom.yMax - geom.yMin))));
+    renderFocus();
+  });
+  host.addEventListener("pointerleave", () => { focusIdx = null; renderFocus(); });
+  host.addEventListener("keydown", (e) => {
+    if (!geom) return;
+    const span = geom.yMax - geom.yMin;
+    if (e.key === "ArrowRight") { focusIdx = Math.min(span, (focusIdx ?? -1) + 1); renderFocus(); e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { focusIdx = Math.max(0, (focusIdx ?? span + 1) - 1); renderFocus(); e.preventDefault(); }
+    else if (e.key === "Home") { focusIdx = 0; renderFocus(); e.preventDefault(); }
+    else if (e.key === "End") { focusIdx = span; renderFocus(); e.preventDefault(); }
+    else if (e.key === "Escape") { focusIdx = null; renderFocus(); }
+  });
+  host.addEventListener("focusin", (e) => { if (e.target.tagName === "svg" && focusIdx == null) { focusIdx = 0; renderFocus(); } });
+
+  draw();
+  new ResizeObserver(() => draw()).observe(host);
+}
+
 // ---------- grafik batang vertikal ----------
 // opts: { data: [[year, v]], format, color, height, label, aria }
 export function barChart(host, opts) {

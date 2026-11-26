@@ -55,12 +55,7 @@ a:hover { text-decoration: underline; }
 }
 .brand { display: flex; align-items: center; gap: 11px; color: #fff; }
 .brand:hover { text-decoration: none; }
-.brand-mark {
-  width: 30px; height: 30px; flex: 0 0 auto; background: var(--accent);
-  clip-path: polygon(0 0, 100% 0, 100% 46%, 0 46%);
-  box-shadow: inset 0 -15px 0 #fff;
-  border-radius: 3px;
-}
+.brand-mark { width: 34px; height: 34px; flex: 0 0 auto; display: block; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
 .brand-text strong { font-size: 17px; letter-spacing: .01em; }
 .brand-text small { font-size: 11px; color: #b9bcc2; }
@@ -160,6 +155,24 @@ a:hover { text-decoration: underline; }
 .chip input { accent-color: var(--accent); margin: 0; }
 .chip.on { border-color: var(--accent); background: var(--accent-wash); color: var(--accent-dark); }
 .chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ---------- small multiples (panel makro) ---------- */
+.mini-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 12px; }
+.mini {
+  margin: 0; background: #fbfaf8; border: 1px solid var(--line-soft); border-radius: 8px;
+  padding: 10px 12px 4px; min-width: 0;
+}
+.mini-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.mini-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.3px; font-weight: 650; color: var(--ink-soft); }
+.mini-name a { color: inherit; }
+.mini-name a:hover { color: var(--accent-dark); }
+.mini-name .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.mini-latest { font-size: 14.5px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mini-delta { font-size: 10.8px; font-weight: 650; margin-left: 6px; white-space: nowrap; }
+.mini-delta.up { color: var(--green); }
+.mini-delta.down { color: var(--accent); }
+.mini-delta.flat { color: var(--ink-faint); }
+.mini-chart { margin-top: 2px; }
 
 /* ---------- sector grid ---------- */
 .sector-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
